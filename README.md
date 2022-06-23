@@ -1,0 +1,1 @@
+# ansible-module-yandex-cloud-cookbook
