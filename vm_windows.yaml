@@ -1,0 +1,80 @@
+---
+- hosts: localhost
+  vars_files:
+  - vars.yaml
+  tasks:
+  - name: Create vm
+    ycc_vm:
+      auth:
+        token: '{{ token }}'
+      name: '{{ vmname }}'
+      #login: '{{ ssh_user }}'
+      password: "P@ssw0rd###"
+      hostname: '{{ vmname }}'
+      zone_id: ru-central1-a
+      folder_id: '{{ folder }}'
+      platform_id: "Intel Cascade Lake"
+      core_fraction: 5
+      cores: 2
+      memory: 2
+      image_family: "windows-2019-dc-gvlk" 
+      disk_type: hdd
+      disk_size: 64
+      subnet_id: '{{ subnet }}'
+      assign_public_ip: true
+      preemptible: true
+      metadata: { "user-data": "Invoke-Expression -Command ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/ansible/ansible/devel/examples/scripts/ConfigureRemotingForAnsible.ps1')); Enable-WSManCredSSP -Role Server -Force" }
+      state: present
+    register: yc_vm
+  #- debug:
+  #    msg: '{{ yc_vm }}'
+  - name: wait for the RDP port to come online
+    wait_for:
+      port: 3389
+      host: '{{ yc_vm.response.networkInterfaces[0].primaryV4Address.oneToOneNat.address }}'
+      timeout: 600
+  - name: wait for the WinRM port to come online
+    wait_for:
+      port: 5986
+      host: '{{ yc_vm.response.networkInterfaces[0].primaryV4Address.oneToOneNat.address }}'
+      timeout: 600
+    delay: 30
+  - name: Clear metadata
+    ycc_vm:
+      auth:
+        token: '{{ token }}'
+      operation: update
+      name: '{{ vmname }}'
+      labels: {name: 'test'}
+      folder_id: '{{ folder }}'
+      metadata: {}
+    register: yc_vm_update
+  #- debug:
+  #    msg: '{{ yc_vm_update }}'
+
+  - name: save to inventory
+    add_host:
+      name: '{{ yc_vm.response.name }}'
+      ansible_host: '{{ yc_vm.response.networkInterfaces[0].primaryV4Address.oneToOneNat.address }}'
+      ansible_connection: winrm
+      ansible_winrm_server_cert_validation: ignore
+      ansible_user: '{{ VM_ADMIN }}'
+      ansible_password: '{{ VM_PASSWORD}}'
+  - file:
+      path: hosts.cfg
+      state: touch
+  - name: "Update inventory file"
+    lineinfile:
+      path: hosts.cfg
+      regex: '^{{ hostvars[vmname].inventory_hostname }}'
+      line: '{{ hostvars[vmname].inventory_hostname }} ansible_host={{ hostvars[vmname].ansible_host }} ansible_connection={{ hostvars[vmname].ansible_connection }} ansible_user={{ VM_ADMIN }} ansible_password={{ VM_PASSWORD }} ansible_public_ip={{ yc_vm.response.networkInterfaces[0].primaryV4Address.oneToOneNat.address }} ansible_winrm_server_cert_validation=ignore'
+
+#- hosts: wintest
+#  tasks:
+#  - name: Install dotNet 3.5
+#    win_feature:
+#      name:
+#      - NET-Framework-Core
+#    register: dot_net
+#  - win_reboot: {}
+#    when: dot_net.reboot_required
