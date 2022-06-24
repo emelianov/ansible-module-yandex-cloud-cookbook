@@ -1,0 +1,18 @@
+---
+- hosts: localhost
+  vars_files:
+  - vars.yaml
+  tasks:
+  - name: Stop vm
+    ycc_vm:
+      auth:
+        token: {{ my_token }}
+      name: mytynivm
+      operation: stop
+
+  - name: Start vm
+    ycc_vm:
+      auth:
+        token: {{ my_token }}
+      name: mytynivm
+      operation: start

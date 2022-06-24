@@ -1,0 +1,37 @@
+---
+- hosts: localhost
+  vars_files:
+  - vars.yaml
+  tasks:
+  - name: Create vm
+    ycc_vm:
+      auth:
+        token: {{ my_token }}
+      name: myvm
+      login: john_doe
+      public_ssh_key: john_doe_public_key
+      hostname: myvm
+      zone_id: ru-central1-a
+      folder_id: b1gotqhf076hh183dn
+      platform_id: "Intel Cascade Lake"
+      core_fraction: 100
+      cores: 2
+      memory: 2
+      image_id: fd84uob96bu79jk8fqht
+      disk_type: nvme
+      disk_size: 50
+      secondary_disks_spec:
+          - autodelete: true
+            description: disk1
+            type: nvme
+            size: 10
+          - autodelete: false
+            description: disk2
+            type: hdd
+            size: 100
+      subnet_id: b0cccg656k0nixi92a
+      assign_public_ip: false
+      preemptible: true
+      metadata:
+          user-data: "cloud init format in str"
+      state: present
