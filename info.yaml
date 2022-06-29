@@ -1,0 +1,15 @@
+---
+- hosts: localhost
+  vars_files:
+  - vars.yaml
+  tasks:
+  - name: Cloud
+    ycc_info:
+      auth:
+        token: '{{ token }}'
+      type: folders
+      name: default
+    register: yc_c
+  - debug:
+      msg: '{{ yc_c }}'
+  
